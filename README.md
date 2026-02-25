@@ -79,4 +79,46 @@ Flutter Developer | UI/UX Enthusiast | Backend Integration  | 3D Artist | E-Comm
 
 ---
 
+---
+
+## 📸 Application Screenshots
+
+### 🏠 Landing Page
+![Landing Page](screenshots/Landing%20Page.jpg)
+
+### 🛍 Home Screen
+![Home](screenshots/home.jpg)
+
+### 🛒 Products
+![Products](screenshots/Products.jpg)
+
+### 📦 Delivery
+![Delivery](screenshots/Delivery.jpg)
+
+### ✅ Order Confirmation
+![Order Confirm](screenshots/Order%20Confirm.jpg)
+
+### 🎉 Order Placed
+![Order Placed](screenshots/Order%20Placed.jpg)
+
+### 📑 Orders Overview
+![Orders](screenshots/Orders.jpg)
+
+---
+
+## 🛠 Admin Dashboard
+
+### 🔐 Manager Login
+![Manager Login](screenshots/Manager%20Login.jpg)
+
+### 📊 Manager Panel
+![Manager Panel](screenshots/Manager%20Panel.jpg)
+
+
+
+### 🗂 Orders Tab
+![Orders Tab](screenshots/Orders%20Tab.jpg)
+
+---
+
 ⭐ If you found this project interesting, feel free to explore the code!
