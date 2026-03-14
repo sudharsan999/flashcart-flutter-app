@@ -348,34 +348,39 @@ class _CustomerHomeState extends State<CustomerHome> {
           ),
           child: !isStoreOpen
               ? _closedView()
-              : Column(
-                  children: [
-                    const SizedBox(height: kToolbarHeight + 15),
-                    _glassSearchBar(),
-                    Expanded(
-                      child: (activeCategory == null && searchQuery.isEmpty)
-                          ? _categoryGrid()
-                          : Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (activeCategory != null)
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 16, vertical: 8),
-                                    child: Text(
-                                      "Category: $activeCategory",
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 18,
+              : Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1200),
+                    child: Column(
+                      children: [
+                        const SizedBox(height: kToolbarHeight + 15),
+                        _glassSearchBar(),
+                        Expanded(
+                          child: (activeCategory == null && searchQuery.isEmpty)
+                              ? _categoryGrid()
+                              : Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    if (activeCategory != null)
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 16, vertical: 8),
+                                        child: Text(
+                                          "Category: $activeCategory",
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 18,
+                                          ),
+                                        ),
                                       ),
-                                    ),
-                                  ),
-                                Expanded(child: _productGrid()),
-                              ],
-                            ),
+                                    Expanded(child: _productGrid()),
+                                  ],
+                                ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
         ),
         bottomNavigationBar: isStoreOpen && cart.isNotEmpty
@@ -603,10 +608,11 @@ class _CustomerHomeState extends State<CustomerHome> {
         final cats = snap.data!;
         return GridView.builder(
           padding: const EdgeInsets.all(10),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: MediaQuery.of(context).size.width > 900 ? 6 : 3,
             crossAxisSpacing: 8,
             mainAxisSpacing: 8,
+            childAspectRatio: MediaQuery.of(context).size.width > 900 ? 1.2 : 1,
           ),
           itemCount: cats.length,
           itemBuilder: (_, i) {
@@ -665,13 +671,15 @@ class _CustomerHomeState extends State<CustomerHome> {
           return const Center(
               child: CircularProgressIndicator(color: brandColor));
         final list = snap.data!;
+        final screenWidth = MediaQuery.of(context).size.width;
+        final crossAxisCount = screenWidth > 900 ? 6 : 3;
         return GridView.builder(
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 120),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            childAspectRatio: 0.64,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
+            childAspectRatio: screenWidth > 900 ? 1.3 : 1,
           ),
           itemCount: list.length,
           itemBuilder: (_, i) {
