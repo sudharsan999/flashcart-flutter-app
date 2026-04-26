@@ -20,28 +20,26 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
+    // 1. Load the file
     await dotenv.load(fileName: ".env");
-  } catch (_) {}
-
-  final supabaseUrl = const String.fromEnvironment('SUPABASE_URL').isNotEmpty
-      ? const String.fromEnvironment('SUPABASE_URL')
-      : dotenv.env['SUPABASE_URL'];
-
-  final supabaseKey =
-      const String.fromEnvironment('SUPABASE_ANON_KEY').isNotEmpty
-          ? const String.fromEnvironment('SUPABASE_ANON_KEY')
-          : dotenv.env['SUPABASE_ANON_KEY'];
-
-  if (supabaseUrl == null ||
-      supabaseKey == null ||
-      supabaseUrl.isEmpty ||
-      supabaseKey.isEmpty) {
-    runApp(const _FatalErrorApp("Supabase ENV missing"));
+  } catch (e) {
+    // This will catch if the file is missing from assets
+    runApp(_FatalErrorApp(".env file not found in assets: $e"));
     return;
   }
 
-  await Supabase.initialize(url: supabaseUrl, anonKey: supabaseKey);
+  // 2. Extract values (dotenv.env is more reliable than maybeGet for .env files)
+  final String? url = dotenv.env['SUPABASE_URL'];
+  final String? key = dotenv.env['SUPABASE_ANON_KEY'];
 
+  // 3. Strict Check
+  if (url == null || key == null || url.isEmpty || key.isEmpty) {
+    runApp(_FatalErrorApp(
+        "Keys missing inside .env file!\nURL: $url\nKey: ${key != null ? 'Found' : 'Null'}"));
+    return;
+  }
+
+  await Supabase.initialize(url: url, anonKey: key);
   runApp(const FlashCartApp());
 }
 
@@ -317,6 +315,25 @@ class _CustomerHomeState extends State<CustomerHome> {
             .select()
             .eq('category', activeCategory ?? '');
     return List<Map<String, dynamic>>.from(res);
+  }
+
+  void _updateQty(String id, int delta) {
+    setState(() {
+      // 1. Get current item data
+      final existing = cart[id];
+      if (existing == null) return;
+
+      // 2. Calculate new quantity
+      int newQty = (existing['qty'] as int) + delta;
+
+      if (newQty <= 0) {
+        // 3. Remove item if it hits zero
+        cart.remove(id);
+      } else {
+        // 4. Update the quantity
+        cart[id]!['qty'] = newQty;
+      }
+    });
   }
 
   @override
@@ -667,19 +684,22 @@ class _CustomerHomeState extends State<CustomerHome> {
     return FutureBuilder(
       future: _products(),
       builder: (_, snap) {
-        if (!snap.hasData)
+        if (!snap.hasData) {
           return const Center(
               child: CircularProgressIndicator(color: brandColor));
+        }
+
         final list = snap.data!;
         final screenWidth = MediaQuery.of(context).size.width;
         final crossAxisCount = screenWidth > 900 ? 6 : 3;
+
         return GridView.builder(
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 120),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: crossAxisCount,
             crossAxisSpacing: 8,
             mainAxisSpacing: 8,
-            childAspectRatio: screenWidth > 900 ? 1.3 : 1,
+            childAspectRatio: screenWidth > 900 ? 0.7 : 0.65,
           ),
           itemCount: list.length,
           itemBuilder: (_, i) {
@@ -688,7 +708,6 @@ class _CustomerHomeState extends State<CustomerHome> {
             final qty = cart[id]?['qty'] ?? 0;
             final price = _price(p);
 
-            // Inside your GridView.builder -> item builder
             return Container(
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -703,17 +722,14 @@ class _CustomerHomeState extends State<CustomerHome> {
                 children: [
                   // 1. SMALLER IMAGE + ROUNDED CORNERS
                   Padding(
-                    padding:
-                        const EdgeInsets.all(12.0), // Shrinks the image size
+                    padding: const EdgeInsets.all(12.0),
                     child: ClipRRect(
-                      borderRadius:
-                          BorderRadius.circular(15), // Rounds the image corners
+                      borderRadius: BorderRadius.circular(15),
                       child: AspectRatio(
-                        aspectRatio: 1.1,
+                        aspectRatio: 1.2,
                         child: Image.network(
                           p['image_url'] ?? '',
-                          fit: BoxFit
-                              .cover, // Ensures the image fills the rounded box
+                          fit: BoxFit.cover,
                         ),
                       ),
                     ),
@@ -726,47 +742,51 @@ class _CustomerHomeState extends State<CustomerHome> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // FIXED HEIGHT NAME SECTION (Crucial for uniformity)
+                          // PRODUCT NAME AREA
                           SizedBox(
-                            height: 38, // Enough for 2 lines of text
+                            height:
+                                20, // Give it a fixed height so it's forced to appear
                             child: Text(
-                              p['name'] ?? '',
-                              maxLines: 2,
+                              p['name'] ?? 'No Name',
+                              maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                  fontSize: 13, fontWeight: FontWeight.w600),
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black, // Explicitly set to black
+                              ),
                             ),
                           ),
+
+                          const SizedBox(height: 2), // Small gap
+
+                          // UNIT
                           Text(p['unit'] ?? '',
                               style: const TextStyle(
                                   fontSize: 11, color: Colors.grey)),
 
-                          const Spacer(), // Pushes the price and button to the very bottom
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text("₹${price['final']}",
-                                      style: const TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold)),
-                                  if (price['has'])
-                                    Text("₹${price['mrp']}",
-                                        style: const TextStyle(
-                                            fontSize: 11,
-                                            color: Colors.grey,
-                                            decoration:
-                                                TextDecoration.lineThrough)),
-                                ],
-                              ),
-                              // THE STYLIZED BUTTON
-                              qty == 0
-                                  ? _buildAddButton(id, p)
-                                  : _qtyControls(id, qty),
-                            ],
-                          )
+                          const Spacer(),
+
+                          // PRICE & BUTTON ROW
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text("₹${price['final']}",
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                      color: Colors
+                                          .black, // Explicitly set to black
+                                    )),
+                                const SizedBox(width: 8),
+                                qty == 0
+                                    ? _buildAddButton(id, p)
+                                    : _qtyControls(id, qty),
+                              ],
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -822,52 +842,38 @@ class _CustomerHomeState extends State<CustomerHome> {
 
   Widget _qtyControls(String id, int qty) {
     return Container(
-      width: 70, // Matches the ADD button width exactly
-      height: 32,
+      // Removed fixed width to let it breathe, or use a slightly larger one
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
       decoration: BoxDecoration(
         color: brandColor,
         borderRadius: BorderRadius.circular(8),
-        boxShadow: [
-          BoxShadow(
-            color: brandColor.withOpacity(0.3),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          )
-        ],
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisSize: MainAxisSize.min, // Crucial: take only needed space
         children: [
-          // MINUS
-          GestureDetector(
-            onTap: () {
-              HapticFeedback.lightImpact();
-              setState(() => qty == 1 ? cart.remove(id) : cart[id]!['qty']--);
-            },
-            child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 8),
-              child: Icon(Icons.remove, size: 16, color: Colors.white),
+          // Minus Button
+          InkWell(
+            onTap: () => _updateQty(id, -1),
+            child: const Icon(Icons.remove, color: Colors.white, size: 16),
+          ),
+
+          // Quantity Number
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Text(
+              qty.toString(),
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 13, // Slightly smaller font
+              ),
             ),
           ),
-          // NUMBER
-          Text(
-            "$qty",
-            style: const TextStyle(
-              fontWeight: FontWeight.w900,
-              color: Colors.white,
-              fontSize: 13,
-            ),
-          ),
-          // PLUS
-          GestureDetector(
-            onTap: () {
-              HapticFeedback.lightImpact();
-              setState(() => cart[id]!['qty']++);
-            },
-            child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 8),
-              child: Icon(Icons.add, size: 16, color: Colors.white),
-            ),
+
+          // Plus Button
+          InkWell(
+            onTap: () => _updateQty(id, 1),
+            child: const Icon(Icons.add, color: Colors.white, size: 16),
           ),
         ],
       ),
